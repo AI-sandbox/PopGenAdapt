@@ -34,7 +34,7 @@ def parse_args():
                         help='Whether to use source label adaptation.')
 
     # SLA arguments
-    parser.add_argument('--sla-warmup', type=int, default=2500,
+    parser.add_argument('--sla-warmup', type=int, default=500,
                         help='Number of iterations to warmup the source label adaptation.')
     parser.add_argument('--sla-temperature', type=float, default=0.6,
                         help='Temperature to use in the source label adaptation.')
@@ -46,7 +46,7 @@ def parse_args():
     # Training arguments
     parser.add_argument('--batch-size', type=int, default=64,
                         help='Batch size for data loading and training / evaluation.')
-    parser.add_argument('--lr', type=float, default=1e-3,
+    parser.add_argument('--lr', type=float, default=5e-3,
                         help='Initial learning rate for training.')
     parser.add_argument('--num-iters', type=int, default=15000,
                         help='Number of iterations to train for.')

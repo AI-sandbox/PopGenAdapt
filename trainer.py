@@ -10,12 +10,33 @@ from data import DataLoaders
 from model import ProtoClassifier, Model
 
 
+class LearningRateScheduler:
+    """Gamma learning rate scheduler"""
+
+    def __init__(self, optimizer, num_iters, step=0):
+        self.optimizer = optimizer
+        self.iter = step
+        self.num_iters = num_iters
+        self.base = self.optimizer.param_groups[-1]["lr"]
+
+    def step(self):
+        for param_group in self.optimizer.param_groups:
+            param_group["lr"] = self.base * ((1 + 0.0001 * self.iter) ** (-0.75))
+        self.iter += 1
+
+    def refresh(self):
+        self.iter = 0
+
+    def get_lr(self):
+        return self.optimizer.param_groups[-1]["lr"]
+
+
 class BaseTrainer:
     def __init__(self, model: Model, data_loaders: DataLoaders, lr=1e-3, num_iters=10000, **kwargs):
         self.model = model
         self.data_loaders = data_loaders
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        # self.lr_scheduler = None  # TODO
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4, nesterov=True)
+        self.lr_scheduler = LearningRateScheduler(self.optimizer, num_iters)
         self.num_iters = num_iters
 
     def get_source_loss(self, step, sx, sy):
@@ -61,7 +82,7 @@ class BaseTrainer:
 
         return s_loss.item(), t_loss.item(), 0
 
-    def train(self, eval_interval): 
+    def train(self, eval_interval):
         best_val_auc = 0.0
         iter_train_data_loaders = iter(self.data_loaders)
         self.model.train()
@@ -71,19 +92,19 @@ class BaseTrainer:
             print(f"Step {step}", flush=True)
             (sx, sy), (tx, ty), ux = next(iter_train_data_loaders)
             s_loss, t_loss, u_loss = self.training_step(step, sx, sy, tx, ty, ux)
-            # self.lr_scheduler.step()
+            self.lr_scheduler.step()
 
             wandb.log({
                 's_loss': s_loss,
                 't_loss': t_loss,
                 'u_loss': u_loss,
-                # 'lr': self.optimizer.param_groups[0]['lr'],
+                'lr': self.lr_scheduler.get_lr(),
                 'step': step,
                 'time': (time.time() - start_time) / 60,
             })
 
             if step % eval_interval == 0 or step == self.num_iters:
-                print("Evaluating", flush=True)                
+                print("Evaluating", flush=True)
                 val_auc, test_auc = self.evaluate()
                 wandb.log({
                     'val_auc': val_auc,
@@ -137,6 +158,8 @@ def get_sla_trainer(Trainer):
 
         def ppc_update(self, step):
             if (step == self.warmup) or (step > self.warmup and step % self.update_interval == 0):
+                if step == self.warmup:
+                    self.lr_scheduler.refresh()
                 self.ppc.init(self.model, self.data_loaders.target_unlabeled_train)
 
         def training_step(self, step, sx, sy, tx, ty, ux):
