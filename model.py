@@ -35,8 +35,8 @@ class Classifier(nn.Module):
     num_layers : int
         number of layers in the MLP
 
-    norm : str | None
-        normalization to use after each layer. One of None, 'batch', 'layer'. If None, no normalization
+    layer_norm : bool
+        whether to use layer normalization
 
     hidden_size : int | None
         size of hidden layers. If None, hidden size is equal to the input size
@@ -48,12 +48,12 @@ class Classifier(nn.Module):
         the features are normalized to unit length and then divided by this value
     """
 
-    def __init__(self, in_features, out_features, num_layers=1, normalization=None, hidden_size=None, skip_every=None, temperature=0.05):
+    def __init__(self, in_features, out_features, num_layers=1, layer_norm=True, hidden_size=None, skip_every=None, temperature=0.05):
         super().__init__()
 
         self.num_layers = num_layers
         self.skip_every = skip_every if skip_every is not None else num_layers + 1
-        self.norm = normalization
+        self.layer_norm = layer_norm
         self.temperature = temperature
 
         self.mlp = nn.ModuleList()
@@ -64,16 +64,12 @@ class Classifier(nn.Module):
                 hidden_size = in_features
             self.mlp.append(nn.Linear(in_features, hidden_size))
             self.mlp.append(nn.GELU())
-            if normalization == 'batch':
-                self.mlp.append(nn.BatchNorm1d(hidden_size))
-            elif normalization == 'layer':
+            if layer_norm:
                 self.mlp.append(nn.LayerNorm(hidden_size))
             for _ in range(num_layers - 2):
                 self.mlp.append(nn.Linear(hidden_size, hidden_size))
                 self.mlp.append(nn.GELU())
-                if normalization == 'batch':
-                    self.mlp.append(nn.BatchNorm1d(hidden_size))
-                elif normalization == 'layer':
+                if layer_norm:
                     self.mlp.append(nn.LayerNorm(hidden_size))
             self.mlp.append(nn.Linear(hidden_size, out_features))
 
@@ -92,7 +88,7 @@ class Classifier(nn.Module):
             skip = x
             for i, layer in enumerate(self.mlp[1:-1]):
                 x = layer(x)
-                if (i - 1) % ((2 + (1 if self.norm else 0)) * self.skip_every) == 0:
+                if (i - 1) % ((2 + int(self.layer_norm)) * self.skip_every) == 0:
                     x = x + skip
                     skip = x
         # (batch_size, hidden_size)
@@ -127,7 +123,8 @@ class ProtoClassifier(nn.Module):
         center = torch.nan_to_num(torch.vstack([t_feat[label == i].mean(dim=0) for i in range(self.num_classes)]))
         invalid_idx = center.sum(dim=1) == 0
         if invalid_idx.any() and self.label is not None:
-            old_center = torch.vstack([t_feat[self.label == i].mean(dim=0) for i in range(self.num_classes)])
+            print("Warning: invalid center(s) found, using old center(s) instead", flush=True)
+            old_center = torch.nan_to_num(torch.vstack([t_feat[self.label == i].mean(dim=0) for i in range(self.num_classes)]))
             center[invalid_idx] = old_center[invalid_idx]
         else:
             self.label = label
@@ -141,15 +138,15 @@ class ProtoClassifier(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, in_features, out_features, num_layers=1, normalization=True, hidden_size=None, skip_every=None, temperature=0.05):
+    def __init__(self, in_features, out_features, num_layers=1, layer_norm=True, hidden_size=None, skip_every=None, temperature=0.05):
         super().__init__()
 
-        self.classifier = Classifier(in_features, out_features, num_layers, normalization, hidden_size, skip_every, temperature)
+        self.classifier = Classifier(in_features, out_features, num_layers, layer_norm, hidden_size, skip_every, temperature)
 
         self.criterion = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, x, reverse=False, lamda=0.1):
-        return self.classifier(x, reverse=False, lamda=0.1)
+        return self.classifier(x, reverse=reverse, lamda=lamda)
 
     def get_features(self, x, reverse=False, lamda=0.1):
         return self.classifier.get_features(x, reverse=reverse, lamda=lamda)

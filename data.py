@@ -134,6 +134,7 @@ class DataLoaders:
         assert source_labeled_train_dataset.num_variants is not None and source_labeled_train_dataset.num_classes is not None
         self.in_features = source_labeled_train_dataset.num_variants
         self.out_features = source_labeled_train_dataset.num_classes
+        print("Datasets created.", flush=True)
 
         # Train data loaders
         print("Creating data loaders for training...", flush=True)
@@ -146,11 +147,12 @@ class DataLoaders:
         self.target_unlabeled_train = DataLoader(dataset=target_unlabeled_train_dataset, batch_size=batch_size)  # for ProtoClassifier
         
         # Validation and test data loaders
+        # Note that the batch size is set to the number of samples in the dataset to avoid problems in the AUC computation
         print("Creating data loaders for validation and test...", flush=True)
-        self.target_labeled_validation = DataLoader(dataset=target_labeled_validation_dataset, batch_size=batch_size)
-        self.target_labeled_test = DataLoader(dataset=target_labeled_test_dataset, batch_size=batch_size)
+        self.target_labeled_validation = DataLoader(dataset=target_labeled_validation_dataset, batch_size=len(target_labeled_validation_dataset))
+        self.target_labeled_test = DataLoader(dataset=target_labeled_test_dataset, batch_size=len(target_labeled_test_dataset))
 
-        print("DataLoaders initialized", flush=True)
+        print("DataLoaders initialized.", flush=True)
 
     def __iter__(self):
         while True:

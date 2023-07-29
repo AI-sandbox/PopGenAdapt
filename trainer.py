@@ -34,7 +34,7 @@ class BaseTrainer:
     def __init__(self, model: Model, data_loaders: DataLoaders, lr=1e-3, num_iters=10000, **kwargs):
         self.model = model
         self.data_loaders = data_loaders
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4, nesterov=True)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         self.lr_scheduler = LearningRateScheduler(self.optimizer, num_iters)
         self.num_iters = num_iters
 
@@ -58,7 +58,7 @@ class BaseTrainer:
                     y_pred = F.sigmoid(out[:, 1])
                 else:
                     y_pred = F.softmax(out, dim=1)
-                auc = metric(y_pred, y)
+                metric.update(y_pred, y)
         auc = metric.compute()
         return auc
 
@@ -81,8 +81,9 @@ class BaseTrainer:
 
         return s_loss.item(), t_loss.item(), 0
 
-    def train(self, eval_interval):
+    def train(self, eval_interval, early_stop=None):
         best_val_auc = 0.0
+        iterations_without_improvement = 0
         iter_train_data_loaders = iter(self.data_loaders)
         self.model.train()
         start_time = time.time()
@@ -90,6 +91,7 @@ class BaseTrainer:
         for step in range(1, self.num_iters + 1):
             print(f"Step {step}", flush=True)
             (sx, sy), (tx, ty), ux = next(iter_train_data_loaders)
+            # with torch.autograd.detect_anomaly():  # for debugging the next line
             s_loss, t_loss, u_loss = self.training_step(step, sx, sy, tx, ty, ux)
             self.lr_scheduler.step()
 
@@ -98,9 +100,8 @@ class BaseTrainer:
                 't_loss': t_loss,
                 'u_loss': u_loss,
                 'lr': self.lr_scheduler.get_lr(),
-                'step': step,
                 'time': (time.time() - start_time) / 60,
-            })
+            }, step=step)
 
             if step % eval_interval == 0 or step == self.num_iters:
                 print("Evaluating", flush=True)
@@ -108,12 +109,18 @@ class BaseTrainer:
                 wandb.log({
                     'val_auc': val_auc,
                     'test_auc': test_auc,
-                    'step': step
-                })
+                }, step=step)
                 if val_auc > best_val_auc:
                     best_val_auc = val_auc
+                    iterations_without_improvement = 0
                     if wandb.run:
+                        wandb.run.summary['best_val_auc'] = val_auc
                         wandb.run.summary['best_test_auc'] = test_auc
+                else:
+                    iterations_without_improvement += eval_interval
+                    if early_stop is not None and iterations_without_improvement >= early_stop:
+                        print("Early stopping", flush=True)
+                        break
 
 
 class UnlabeledTrainer(BaseTrainer):
