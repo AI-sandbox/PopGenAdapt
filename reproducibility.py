@@ -4,6 +4,7 @@ import random
 import numpy as np
 import torch
 
+
 def make_reproducible(seed: int = 42) -> None:
     """
     Make the results reproducible, possibly at a performance cost.
@@ -18,7 +19,7 @@ def make_reproducible(seed: int = 42) -> None:
         random seed to use
     """
 
-    # See https://github.com/pytorch/pytorch/issues/47672 and https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility for details. 
+    # See https://github.com/pytorch/pytorch/issues/47672 and https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility for details.
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
     random.seed(seed)

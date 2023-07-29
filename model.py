@@ -1,3 +1,4 @@
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -123,7 +124,7 @@ class ProtoClassifier(nn.Module):
         center = torch.nan_to_num(torch.vstack([t_feat[label == i].mean(dim=0) for i in range(self.num_classes)]))
         invalid_idx = center.sum(dim=1) == 0
         if invalid_idx.any() and self.label is not None:
-            print("Warning: invalid center(s) found, using old center(s) instead", flush=True)
+            logging.warning("Invalid center(s) found, using old center(s) instead")
             old_center = torch.nan_to_num(torch.vstack([t_feat[self.label == i].mean(dim=0) for i in range(self.num_classes)]))
             center[invalid_idx] = old_center[invalid_idx]
         else:

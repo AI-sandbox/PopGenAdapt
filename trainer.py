@@ -1,3 +1,4 @@
+import logging
 import time
 
 import torch
@@ -64,9 +65,9 @@ class BaseTrainer:
 
     def evaluate(self):
         self.model.eval()
-        print("Validation", flush=True)
+        logging.info("Validation")
         val_auc = self.evaluation_step(self.data_loaders.target_labeled_validation)
-        print("Test", flush=True)
+        logging.info("Test")
         test_auc = self.evaluation_step(self.data_loaders.target_labeled_test)
         return val_auc, test_auc
 
@@ -87,9 +88,9 @@ class BaseTrainer:
         iter_train_data_loaders = iter(self.data_loaders)
         self.model.train()
         start_time = time.time()
-        print("Training started", flush=True)
+        logging.info("Training started")
         for step in range(1, self.num_iters + 1):
-            print(f"Step {step}", flush=True)
+            logging.info(f"Step {step}")
             (sx, sy), (tx, ty), ux = next(iter_train_data_loaders)
             # with torch.autograd.detect_anomaly():  # for debugging the next line
             s_loss, t_loss, u_loss = self.training_step(step, sx, sy, tx, ty, ux)
@@ -104,7 +105,7 @@ class BaseTrainer:
             }, step=step)
 
             if step % eval_interval == 0 or step == self.num_iters:
-                print("Evaluating", flush=True)
+                logging.info("Evaluating")
                 val_auc, test_auc = self.evaluate()
                 wandb.log({
                     'val_auc': val_auc,
@@ -119,7 +120,7 @@ class BaseTrainer:
                 else:
                     iterations_without_improvement += eval_interval
                     if early_stop is not None and iterations_without_improvement >= early_stop:
-                        print("Early stopping", flush=True)
+                        logging.info("Early stopping")
                         break
 
 

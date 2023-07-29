@@ -1,4 +1,5 @@
 import argparse
+import logging
 
 import wandb
 
@@ -14,7 +15,8 @@ def parse_args():
 
     parser.add_argument('--project', type=str, default='PopGenAdapt',
                         help='Name of the wandb project to use.')
-
+    parser.add_argument('--verbose', action='store_true',
+                        help='Whether to log progress.')
     parser.add_argument('--seed', type=int, default=None,
                         help='Random seed to use for reproducibility.')
 
@@ -65,20 +67,21 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
+    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format='%(asctime)s %(levelname)s %(message)s')
     wandb.init(project=args.project, name=args.ssda_method + ("-sla" if args.sla else ""), config=vars(args))
     if args.seed is not None:
         make_reproducible(args.seed)
-        print(f"Using random seed {args.seed}.", flush=True)
-    print("Loading data...", flush=True)
+        logging.info(f"Using random seed {args.seed}.")
+    logging.info("Loading data...")
     data_loaders = DataLoaders(args.data, args.batch_size)
     in_features, out_features = data_loaders.in_features, data_loaders.out_features
-    print("Building model...", flush=True)
+    logging.info("Building model...")
     model = Model(in_features=in_features, out_features=out_features, num_layers=args.num_layers,
                   hidden_size=args.hidden_size, skip_every=args.skip_every,
                   temperature=args.temperature).cuda()
-    print("Starting training...", flush=True)
+    logging.info("Starting training...")
     trainer = get_trainer(args.ssda_method, args.sla)(model=model, data_loaders=data_loaders, lr=args.lr, num_iters=args.num_iters,  # for BaseTrainer
                                                       unlabeled_method=args.ssda_method,  # for UnlabeledTrainer
                                                       num_classes=out_features, warmup=args.sla_warmup, temperature=args.sla_temperature, alpha=args.sla_alpha, update_interval=args.sla_update_interval)  # for SLATrainer
     trainer.train(eval_interval=args.eval_interval, early_stop=args.early_stop)
-    print("Done!", flush=True)
+    logging.info("Done!")

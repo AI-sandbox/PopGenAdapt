@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 
@@ -121,8 +122,8 @@ class DataLoaders:
 
         with open(dataset_json_path) as f:
             data = json.load(f)
-        
-        print("Creating datasets...", flush=True)
+
+        logging.info("Creating datasets...")
         source_labeled_train_dataset = GenotypeToPhenotypeDataset(data["root"], data["source"]["train"])
         target_labeled_train_dataset = GenotypeToPhenotypeDataset(data["root"], data["target"]["train"])
         target_unlabeled_train_dataset = GenotypeToPhenotypeDataset(data["root"], data["target"]["unlabeled"])
@@ -134,10 +135,10 @@ class DataLoaders:
         assert source_labeled_train_dataset.num_variants is not None and source_labeled_train_dataset.num_classes is not None
         self.in_features = source_labeled_train_dataset.num_variants
         self.out_features = source_labeled_train_dataset.num_classes
-        print("Datasets created.", flush=True)
+        logging.info("Datasets created.")
 
         # Train data loaders
-        print("Creating data loaders for training...", flush=True)
+        logging.info("Creating data loaders for training...")
         self.source_labeled_train_inf = InfiniteDataLoader(dataset=source_labeled_train_dataset, batch_size=batch_size)
         self.s_iter = iter(self.source_labeled_train_inf)
         self.target_labeled_train_inf = InfiniteDataLoader(dataset=target_labeled_train_dataset, batch_size=batch_size)
@@ -145,14 +146,14 @@ class DataLoaders:
         self.target_unlabeled_train_inf = InfiniteDataLoader(dataset=target_unlabeled_train_dataset, batch_size=batch_size)
         self.u_iter = iter(self.target_unlabeled_train_inf)
         self.target_unlabeled_train = DataLoader(dataset=target_unlabeled_train_dataset, batch_size=batch_size)  # for ProtoClassifier
-        
+
         # Validation and test data loaders
         # Note that the batch size is set to the number of samples in the dataset to avoid problems in the AUC computation
-        print("Creating data loaders for validation and test...", flush=True)
+        logging.info("Creating data loaders for validation and test...")
         self.target_labeled_validation = DataLoader(dataset=target_labeled_validation_dataset, batch_size=len(target_labeled_validation_dataset))
         self.target_labeled_test = DataLoader(dataset=target_labeled_test_dataset, batch_size=len(target_labeled_test_dataset))
 
-        print("DataLoaders initialized.", flush=True)
+        logging.info("DataLoaders initialized.")
 
     def __iter__(self):
         while True:

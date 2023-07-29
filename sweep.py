@@ -2,6 +2,7 @@ import argparse
 
 import wandb
 
+
 def parse_args():
     parser = argparse.ArgumentParser(prog='python sweep.py',
                                      description='Intialize a wandb hyperparameter sweep for PopGenAdapt for a given dataset and SSDA method.')
@@ -14,14 +15,15 @@ def parse_args():
                         help='Whether to use source label adaptation.')
     parser.add_argument('--suffix', type=str, default='',  # useful for different phenotypes
                         help='Suffix to append to the project name.')
-    
+
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     args = parse_args()
 
     project_name = f"PopGenAdapt-{args.ssda_method}{('-sla' if args.sla else '')}{'-' + args.suffix if args.suffix else ''}"
-    
+
     sweep_config = {
         'program': 'main.py',
         'method': 'random',
@@ -40,6 +42,7 @@ if __name__ == '__main__':
             '${env}',
             'python3',
             '${program}',
+            '--verbose',
             '--project',
             project_name,
             '--seed',
