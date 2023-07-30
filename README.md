@@ -59,8 +59,8 @@ Run `python main.py --help` to see all the available options.
 ### Hyperparameter Tuning
 
 The choice of hyperparameters can have a significant impact on the performance of the model.
-We use [Weights & Biases](https://wandb.ai/) to perform hyperparameter search. Given a dataset and a method, to find good hyperparameters, run `python sweep.py --data dataset.json [--mme] [--sla]`
-to initialize a hyperparameter sweep and start an agent on.
+We use [Weights & Biases](https://wandb.ai/) to perform hyperparameter search. Given a dataset and a method, to find good hyperparameters,
+run `python sweep.py --data dataset.json [--mme] [--sla]` to initialize a hyperparameter sweep and start an agent.
 
 <!-- 
 ## Citation
