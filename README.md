@@ -4,18 +4,68 @@ TODO
 
 ## Installation
 
-Install the dependencies with `pip install -r requirements.txt`.
+Install the dependencies with the following command:
+
+```
+pip install -r requirements.txt
+```
 
 Note that the project was developed using Python 3.11 and PyTorch 2.0.1.
 
 ## Usage
 
-Run `python main.py --help` to see the available options.
+To train a model for a given source population (e.g. White British), a target population (e.g. Native Hawaiian),
+and a phenotype (e.g. diabetes), you will need five [.npz files](https://numpy.org/doc/stable/reference/generated/numpy.savez.html):
+
+- Labeled data from the source domain for training (e.g. `whitebritish_diabetes_train.npz`)
+- Labeled data from the target domain for training (e.g. `hawaiian_diabetes_train.npz`)
+- Unlabeled data from the target domain for training (e.g. `hawaiian_unlabeled.npz`)
+- Labeled data from the target domain for validation (e.g. `hawaiian_diabetes_validation.npz`)
+- Labeled data from the target domain for testing (e.g. `hawaiian_diabetes_test.npz`)
+
+The .npz files for labeled data should contain two arrays:
+
+- `x`: of shape `(n_samples, n_snps)`, containing the SNPs, encoded as `0`, `1`, `2`
+- `y`: of shape `(n_samples,)`, containing the phenotypes, encoded as `0`, ..., `n_classes - 1`
+
+The .npz file for unlabeled data should contain only the `x` array.
+
+Then, create a dataset configuration file in JSON format with the same structure as the following example, but with your own paths:
+
+```json
+{
+    "root": "/home/salcc/PopGenAdapt/data",
+    "source": {
+        "train": "whitebritish_diabetes_train.npz"
+    },
+    "target": {
+        "train": "hawaiian_diabetes_train.npz",
+        "unlabeled": "hawaiian_unlabeled.npz",
+        "validation": "hawaiian_diabetes_validation.npz",
+        "test": "hawaiian_diabetes_test.npz"
+    }
+}
+```
+
+Finally, execute the following command to train the model:
+
+```
+python main.py --data dataset.json --mme --sla
+```
+
+Run `python main.py --help` to see all the available options.
+
+
+### Hyperparameter Tuning
+
+The choice of hyperparameters can have a significant impact on the performance of the model.
+We use [Weights & Biases](https://wandb.ai/) to perform hyperparameter search. Given a dataset and a method, to find good hyperparameters, run `python sweep.py --data dataset.json [--mme] [--sla]`
+to initialize a hyperparameter sweep and start an agent on.
 
 <!-- 
 ## Citation
 
-If you use this code in your research, please cite the following paper:
+When using this software, please cite the following paper:
 
 ```
 TODO
