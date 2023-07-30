@@ -25,8 +25,8 @@ def parse_args():
                         help='Path to the dataset JSON file.')
 
     # SSDA arguments
-    parser.add_argument('--ssda_method', type=str, choices=['base', 'ent', 'mme'], default='base',
-                        help='Semi-supervised domain adaptation method to use.')
+    parser.add_argument('--mme', action='store_true',
+                        help='Whether to use minimax entropy.')
     parser.add_argument('--sla', action='store_true',
                         help='Whether to use source label adaptation.')
 
@@ -40,19 +40,21 @@ def parse_args():
     parser.add_argument('--temperature', type=float, default=0.05,
                         help='Temperature to use in the MLP model.')
 
-    # SLA arguments
+    # MME-SLA hyperparameter arguments
+    parser.add_argument('--mme_lambda', type=float, default=0.1,
+                        help='Lambda tradeoff to use for minimax entropy.')
     parser.add_argument('--sla_warmup', type=int, default=500,
                         help='Number of iterations to warmup the source label adaptation.')
     parser.add_argument('--sla_temperature', type=float, default=0.6,
                         help='Temperature to use in the source label adaptation.')
     parser.add_argument('--sla_alpha', type=float, default=0.5,
-                        help='Alpha to use in the source label adaptation.')
+                        help='Alpha tradeoff to use in the source label adaptation.')
     parser.add_argument('--sla_update_interval', type=int, default=500,
                         help='Number of iterations between source label adaptation updates.')
 
     # Training arguments
     parser.add_argument('--batch_size', type=int, default=64,
-                        help='Batch size for data loading and training / evaluation.')
+                        help='Batch size for training.')
     parser.add_argument('--lr', type=float, default=1e-3,
                         help='Initial learning rate for training.')
     parser.add_argument('--num_iters', type=int, default=50000,
@@ -68,7 +70,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format='%(asctime)s %(levelname)s %(message)s')
-    wandb.init(project=args.project, name=args.ssda_method + ("-sla" if args.sla else ""), config=vars(args))
+    wandb.init(project=args.project, name=("base" if not args.mme else "mme") + ("-sla" if args.sla else ""), config=vars(args))
     if args.seed is not None:
         make_reproducible(args.seed)
         logging.info(f"Using random seed {args.seed}.")
@@ -80,8 +82,7 @@ if __name__ == '__main__':
                   hidden_size=args.hidden_size, skip_every=args.skip_every,
                   temperature=args.temperature).cuda()
     logging.info("Starting training...")
-    trainer = get_trainer(args.ssda_method, args.sla)(model=model, data_loaders=data_loaders, lr=args.lr, num_iters=args.num_iters,  # for BaseTrainer
-                                                      unlabeled_method=args.ssda_method,  # for UnlabeledTrainer
-                                                      num_classes=out_features, warmup=args.sla_warmup, temperature=args.sla_temperature, alpha=args.sla_alpha, update_interval=args.sla_update_interval)  # for SLATrainer
+    trainer = get_trainer(args.mme, args.sla)(model=model, data_loaders=data_loaders, lr=args.lr, num_iters=args.num_iters,  # for BaseTrainer
+                                              num_classes=out_features, warmup=args.sla_warmup, temperature=args.sla_temperature, alpha=args.sla_alpha, update_interval=args.sla_update_interval)  # for SLATrainer
     trainer.train(eval_interval=args.eval_interval, early_stop=args.early_stop)
     logging.info("Done!")

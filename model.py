@@ -6,19 +6,19 @@ import torch.nn.functional as F
 
 class GradReverse(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x, lamda=1.0):
-        ctx.lamda = lamda
+    def forward(ctx, x, eta=1.0):
+        ctx.eta = eta
         # See https://discuss.pytorch.org/t/solved-reverse-gradients-in-backward-pass/3589/4 on why we need to use "x.view_as(x)"
         return x.view_as(x)
 
     @staticmethod
     def backward(ctx, grad_output):
-        output = grad_output.neg() * ctx.lamda
+        output = grad_output.neg() * ctx.eta
         return output, None
 
 
-def grad_reverse(x, lamda=1.0) -> torch.Tensor:
-    return GradReverse.apply(x, lamda)
+def grad_reverse(x, eta=1.0) -> torch.Tensor:
+    return GradReverse.apply(x, eta)
 
 
 class Classifier(nn.Module):
@@ -74,15 +74,15 @@ class Classifier(nn.Module):
                     self.mlp.append(nn.LayerNorm(hidden_size))
             self.mlp.append(nn.Linear(hidden_size, out_features))
 
-    def forward(self, x, reverse=False, lamda=0.1):
+    def forward(self, x, reverse=False):
         # (batch_size, in_features)
-        x = self.get_features(x, reverse=reverse, lamda=lamda)
+        x = self.get_features(x, reverse=reverse)
         # (batch_size, hidden_size)
         x = self.get_predictions(x)
         # (batch_size, out_features)
         return x
 
-    def get_features(self, x, reverse=False, lamda=1.0):
+    def get_features(self, x, reverse=False):
         # (batch_size, in_features)
         if self.num_layers > 1:
             x = self.mlp[0](x)
@@ -94,7 +94,7 @@ class Classifier(nn.Module):
                     skip = x
         # (batch_size, hidden_size)
         if reverse:
-            x = grad_reverse(x, lamda)
+            x = grad_reverse(x)
         return F.normalize(x, dim=1) / self.temperature
 
     def get_predictions(self, x):
@@ -146,11 +146,11 @@ class Model(nn.Module):
 
         self.criterion = nn.CrossEntropyLoss(reduction='none')
 
-    def forward(self, x, reverse=False, lamda=0.1):
-        return self.classifier(x, reverse=reverse, lamda=lamda)
+    def forward(self, x, reverse=False):
+        return self.classifier(x, reverse=reverse)
 
-    def get_features(self, x, reverse=False, lamda=0.1):
-        return self.classifier.get_features(x, reverse=reverse, lamda=lamda)
+    def get_features(self, x, reverse=False):
+        return self.classifier.get_features(x, reverse=reverse)
 
     def get_predictions(self, f):
         return self.classifier.get_predictions(f)
@@ -161,27 +161,14 @@ class Model(nn.Module):
     def feature_base_loss(self, f, y):
         return self.criterion(self.get_predictions(f), y).mean()
 
+    def mme_loss(self, x, lamda=0.1):
+        out = self.forward(x, reverse=True)
+        out = F.softmax(out, dim=1)
+        return lamda * torch.mean(torch.sum(out * torch.log(out + 1e-7), dim=1))
+
     def sla_loss(self, f, y1, y2, alpha):
         out = self.get_predictions(f)
         log_softmax_out = F.log_softmax(out, dim=1)
         l_loss = self.criterion(out, y1)
         soft_loss = -(y2 * log_softmax_out).sum(dim=1)
         return ((1 - alpha) * l_loss + alpha * soft_loss).mean()
-
-    def ent_loss(self, _, x, lamda=0.1):
-        out = self.forward(x, reverse=True, lamda=-lamda)
-        out = F.softmax(out, dim=1)
-        return -lamda * torch.mean(torch.sum(out * torch.log(out + 1e-7)), dim=1)
-
-    def mme_loss(self, _, x, lamda=0.1):
-        out = self.forward(x, reverse=True, lamda=lamda)
-        out = F.softmax(out, dim=1)
-        return lamda * torch.mean(torch.sum(out * torch.log(out + 1e-7), dim=1))
-
-    def unlabeled_loss(self, step, ux, method):
-        if method == 'ent':
-            return self.ent_loss(step, ux)
-        elif method == 'mme':
-            return self.mme_loss(step, ux)
-        else:
-            raise NotImplementedError(f"Unknown unlabeled loss method: {method}")

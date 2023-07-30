@@ -125,13 +125,12 @@ class BaseTrainer:
 
 
 class UnlabeledTrainer(BaseTrainer):
-    def __init__(self, model: Model, data_loaders, lr=1e-3, num_iters=10000, unlabeled_method='mme', **kwargs):
+    def __init__(self, model: Model, data_loaders, lr=1e-3, num_iters=10000, **kwargs):
         super().__init__(model, data_loaders, lr, num_iters)
-        self.unlabeled_method = unlabeled_method
 
-    def unlabeled_training_step(self, step, ux):
+    def unlabeled_training_step(self, ux):
         self.optimizer.zero_grad()
-        u_loss = self.model.unlabeled_loss(step, ux, method=self.unlabeled_method)
+        u_loss = self.model.mme_loss(ux)
         u_loss.backward()
         self.optimizer.step()
 
@@ -139,7 +138,7 @@ class UnlabeledTrainer(BaseTrainer):
 
     def training_step(self, step, sx, sy, tx, ty, ux):
         s_loss, t_loss, _ = super().training_step(step, sx, sy, tx, ty, ux)
-        u_loss = self.unlabeled_training_step(step, ux)
+        u_loss = self.unlabeled_training_step(ux)
         return s_loss, t_loss, u_loss
 
 
@@ -177,11 +176,11 @@ def get_sla_trainer(Trainer):
     return SLATrainer
 
 
-def get_trainer(method, sla):
+def get_trainer(mme, sla):
     Trainer = None
-    if method == "base":
+    if not mme:
         Trainer = BaseTrainer
-    else:  # "ent" or "mme"
+    else:
         Trainer = UnlabeledTrainer
 
     if sla:
