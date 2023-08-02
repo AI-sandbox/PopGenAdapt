@@ -1,6 +1,6 @@
 # PopGenAdapt: Semi-Supervised Domain Adaptation for Genotype-to-Phenotype Prediction in Underrepresented Populations
 
-TODO
+PopGenAdapt is a deep learning model that applies semi-supervised domain adaptation (SSDA) to improve genotype-to-phenotype prediction in underrepresented populations. The approach leverages the large amount of labeled data from well-represented populations, as well as the limited labeled and the larger amount of unlabeled data from underrepresented populations. This helps to address the imbalance present in genetic datasets, which predominantly represent individuals of European ancestry. 
 
 ## Installation
 
@@ -28,7 +28,7 @@ The .npz files for labeled data should contain two arrays:
 - `x`: of shape `(n_samples, n_snps)`, containing the SNPs, encoded as `0`, `1`, `2`
 - `y`: of shape `(n_samples,)`, containing the phenotypes, encoded as `0`, ..., `n_classes - 1`
 
-The .npz file for unlabeled data should contain only the `x` array.
+The .npz file for unlabeled data should contain only the `x` array. Note that regression tasks are not supported.
 
 Then, create a dataset configuration file in JSON format with the same structure as the following example, but with your own paths:
 
@@ -60,7 +60,7 @@ Run `python main.py --help` to see all the available options.
 
 The choice of hyperparameters can have a significant impact on the performance of the model.
 We use [Weights & Biases](https://wandb.ai/) to perform hyperparameter search. Given a dataset and a method, to find good hyperparameters,
-run `python sweep.py --data dataset.json [--mme] [--sla]` to initialize a hyperparameter sweep and start an agent.
+run `python sweep.py --data dataset.json --mme --sla` to initialize a hyperparameter sweep and start an agent.
 
 <!-- 
 ## Citation
