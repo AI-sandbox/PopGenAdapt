@@ -1,4 +1,4 @@
-# PopGenAdapt: Semi-Supervised Domain Adaptation for Genotype-to-Phenotype Prediction in Underrepresented Populations
+# PopGenAdapt
 
 PopGenAdapt is a deep learning model that applies semi-supervised domain adaptation (SSDA) to improve genotype-to-phenotype prediction in underrepresented populations. The approach leverages the large amount of labeled data from well-represented populations, as well as the limited labeled and the larger amount of unlabeled data from underrepresented populations. This helps to address the imbalance present in genetic datasets, which predominantly represent individuals of European ancestry. 
 
