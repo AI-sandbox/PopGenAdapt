@@ -62,15 +62,21 @@ The choice of hyperparameters can have a significant impact on the performance o
 We use [Weights & Biases](https://wandb.ai/) to perform hyperparameter search. Given a dataset and a method, to find good hyperparameters,
 run `python sweep.py --data dataset.json --mme --sla` to initialize a hyperparameter sweep and start an agent.
 
-<!-- 
 ## Citation
 
-When using this software, please cite the following paper:
+If you use PopGenAdapt in your research, please cite our [paper](https://psb.stanford.edu/psb-online/proceedings/psb24/comajoan.pdf):
 
 ```
-TODO
+@inproceedings{comajoan2023popgenadapt,
+author = {Comajoan Cara, Marçal and Mas Montserrat, Daniel and Ioannidis, Alexander},
+title = {PopGenAdapt: Semi-Supervised Domain Adaptation for Genotype-to-Phenotype Prediction in Underrepresented Populations},
+booktitle = {Biocomputing 2024},
+pages = {327-340},
+doi = {10.1142/9789811286421_0026},
+URL = {https://psb.stanford.edu/psb-online/proceedings/psb24/comajoan.pdf},
+eprint = {https://www.worldscientific.com/doi/pdf/10.1142/9789811286421_0026},
+}
 ```
--->
 
 ## Acknowledgement
 
